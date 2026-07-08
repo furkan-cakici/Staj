@@ -68,3 +68,7 @@ def get_announcements():
         d["isUrgent"] = bool(d["isUrgent"])
         result.append(d)
     return result
+
+    @app.get("/")
+def read_root():
+    return {"message": "Fabrika API aktif ve çalışıyor! API verileri için /api/menu veya /api/announcements adreslerine gidebilirsiniz."}
