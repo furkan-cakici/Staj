@@ -22,9 +22,9 @@ st.write("Yemek menülerini ve duyuruları buradan anlık olarak güncelleyebili
 
 
 def get_db_connection():
-    # Streamlit Backend klasöründe çalıştığı için fabrika.db doğrudan bulunur
-    db_path = "fabrika.db" 
-    conn = sqlite3.connect(db_path)
+    # Veritabanı dosyasına doğrudan erişim yerine URI yöntemiyle (daha güvenli) bağlan
+    db_path = "file:fabrika.db?mode=rw" 
+    conn = sqlite3.connect(db_path, uri=True)
     conn.row_factory = sqlite3.Row
     return conn
 
