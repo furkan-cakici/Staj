@@ -1,79 +1,62 @@
-from fastapi import FastAPI
+import streamlit as st
 import sqlite3
+import pandas as pd
+from datetime import datetime
 
-app = FastAPI()
+# Ayarlar
+st.set_page_config(page_title="Fabrika Yönetim Paneli", layout="wide")
 
-def init_db():
+def get_db_connection():
     conn = sqlite3.connect("fabrika.db")
-    cursor = conn.cursor()
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Yardımcı fonksiyonlar
+def bugunun_tarihini_al():
+    aylar = ["", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+    gunler = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+    bugun = datetime.now()
+    return f"{bugun.day} {aylar[bugun.month]} {gunler[bugun.weekday()]}"
+
+st.title("🏭 Fabrika Uygulaması Yönetim Merkezi")
+
+tab1, tab2 = st.tabs(["📋 Yemek Menüsü", "📢 Duyurular"])
+
+with tab1:
+    st.header("Günün Menüsünü Belirle")
+    otomatik_tarih = bugunun_tarihini_al()
+    st.info(f"📅 Bugün: **{otomatik_tarih}**")
     
-    # Yemek Menüsü Tablosu
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS yemek_menusu (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT,
-            soup TEXT,
-            mainCourse TEXT,
-            sideDish TEXT,
-            dessert TEXT
-        )
-    """)
+    col1, col2 = st.columns(2)
+    with col1:
+        corba = st.text_input("🍜 Çorba")
+        ana_yemek = st.text_input("🍛 Ana Yemek")
+    with col2:
+        yan_lezzet = st.text_input("🍚 Yan Lezzet")
+        tatli = st.text_input("🍮 Tatlı")
     
-    # Duyurular Tablosu
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS duyurular (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
-            description TEXT,
-            timeAgo TEXT,
-            isUrgent INTEGER
-        )
-    """)
+    if st.button("Kaydet"):
+        if corba and ana_yemek:
+            conn = get_db_connection()
+            # Önce aynı gün kaydı var mı bak
+            conn.execute("INSERT OR REPLACE INTO yemek_menusu (date, soup, mainCourse, sideDish, dessert) VALUES (?, ?, ?, ?, ?)",
+                         (otomatik_tarih, corba, ana_yemek, yan_lezzet, tatli))
+            conn.commit()
+            conn.close()
+            st.success("Menü güncellendi!")
+            st.rerun()
+
+with tab2:
+    st.header("Yeni Duyuru")
+    d_baslik = st.text_input("Başlık")
+    d_icerik = st.text_area("İçerik")
+    d_acil = st.checkbox("🚨 Acil Durum")
     
-    # Örnek test verileri (Eğer tablolar boşsa eklenir)
-    cursor.execute("SELECT COUNT(*) FROM yemek_menusu")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO yemek_menusu (date, soup, mainCourse, sideDish, dessert) VALUES (?, ?, ?, ?, ?)",
-                       ("15 Nisan Salı", "Mercimek Çorbası", "Karnıyarık", "Pirinç Pilavı", "Sütlaç"))
-        cursor.execute("INSERT INTO duyurular (title, description, timeAgo, isUrgent) VALUES (?, ?, ?, ?)",
-                       ("Bakım Çalışması", "Yarın saat 10:00'da atölye A'da altyapı çalışması olacaktır.", "1 Saat Önce", 1))
+    if st.button("Yayınla"):
+        conn = get_db_connection()
+        conn.execute("INSERT INTO duyurular (title, description, timeAgo, isUrgent) VALUES (?, ?, ?, ?)",
+                     (d_baslik, d_icerik, datetime.now().strftime("%H:%M"), 1 if d_acil else 0))
         conn.commit()
-    conn.close()
-
-init_db()
-
-@app.get("/api/menu")
-def get_menu():
-    conn = sqlite3.connect("fabrika.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM yemek_menusu")
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
-@app.get("/api/announcements")
-def get_announcements():
-    conn = sqlite3.connect("fabrika.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM duyurular")
-    rows = cursor.fetchall()
-    conn.close()
-    
-    # SQLite'ta boolean olmadığı için 1/0 kontrolünü True/False yapıyoruz
-    result = []
-    for row in rows:
-        d = dict(row)
-        d["isUrgent"] = bool(d["isUrgent"])
-        result.append(d)
-    return result
-
-@app.get("/")
-def read_root():
-    return {"message": "Fabrika API aktif ve çalışıyor! API verileri için /api/menu veya /api/announcements adreslerine gidebilirsiniz."}
-
-# Dosyanın en sonuna şu bloğu ekle
-@app.get("/")
-def read_root():
-    return {"message": "Fabrika API aktif ve çalışıyor!"}
+        conn.close()
+        st.success("Duyuru yayınlandı!")
+        st.rerun()
