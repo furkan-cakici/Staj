@@ -69,6 +69,6 @@ def get_announcements():
         result.append(d)
     return result
 
-    @app.get("/")
+@app.get("/")
 def read_root():
     return {"message": "Fabrika API aktif ve çalışıyor! API verileri için /api/menu veya /api/announcements adreslerine gidebilirsiniz."}
