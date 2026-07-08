@@ -30,7 +30,7 @@ def get_db_connection():
 
 st.title("🏭 Fabrika Yönetim Paneli")
 
-tab1, tab2 = st.tabs(["📋 Yemek Menüsü Yönetimi", "📢 Duyuru Yönetimi"])
+tab1, tab2 = st.tabs(["🥘 Yemek Menüsü", "📢 Duyurular"])
 
 # --- YEMEK MENÜSÜ SEKMESİ ---
 with tab1:
