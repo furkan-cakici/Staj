@@ -1,10 +1,11 @@
 import streamlit as st
 import sqlite3
-import pandas as pd
+import os
 
-# Veritabanı bağlantısı
 def get_db_connection():
-    conn = sqlite3.connect("fabrika.db")
+    # Streamlit Backend klasöründe çalıştığı için fabrika.db doğrudan bulunur
+    db_path = "fabrika.db" 
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
