@@ -112,6 +112,7 @@ with tab1:
     except Exception as e:
         st.error(f"Kayıtlar okunamadı: {e}")
 
+
 # ==========================================
 # 2. SEKME: DUYURU YÖNETİMİ
 # ==========================================
@@ -139,6 +140,40 @@ with tab2:
             st.rerun()
         else:
             st.warning("Lütfen başlık ve içerik alanlarını boş bırakmayın.")
+
+    st.divider()
+    
+    # --- YENİ EKLENEN: DUYURU SİLME BÖLÜMÜ ---
+    st.subheader("🗑️ İstediğin Duyuruyu Sil")
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, title, timeAgo FROM duyurular")
+        mevcut_duyurular = cursor.fetchall()
+        
+        if mevcut_duyurular:
+            # Açılır menüde ID, Başlık ve Saat gösterecek şekilde sözlük oluşturuyoruz
+            duyuru_secenekleri = {f"{d['id']} - {d['title']} ({d['timeAgo']})": d['id'] for d in mevcut_duyurular}
+            
+            col_secim, col_buton = st.columns([4, 1])
+            with col_secim:
+                secilen_duyuru = st.selectbox("Silmek istediğiniz duyuruyu seçin:", list(duyuru_secenekleri.keys()))
+            
+            with col_buton:
+                st.write("") # Butonu selectbox ile aynı hizaya getirmek için boşluk
+                st.write("")
+                if st.button("Seçili Duyuruyu Sil"):
+                    silinecek_id = duyuru_secenekleri[secilen_duyuru]
+                    cursor.execute("DELETE FROM duyurular WHERE id = ?", (silinecek_id,))
+                    conn.commit()
+                    st.success("Duyuru başarıyla silindi!")
+                    st.rerun()
+        else:
+            st.info("Sistemde silinecek bir duyuru bulunmuyor.")
+    except Exception as e:
+        st.error(f"Duyurular yüklenirken hata oluştu: {e}")
+    finally:
+        conn.close()
 
     st.divider()
     st.subheader("Aktif Duyurular")
