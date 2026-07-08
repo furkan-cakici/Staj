@@ -72,3 +72,8 @@ def get_announcements():
 @app.get("/")
 def read_root():
     return {"message": "Fabrika API aktif ve çalışıyor! API verileri için /api/menu veya /api/announcements adreslerine gidebilirsiniz."}
+
+# Dosyanın en sonuna şu bloğu ekle
+@app.get("/")
+def read_root():
+    return {"message": "Fabrika API aktif ve çalışıyor!"}
