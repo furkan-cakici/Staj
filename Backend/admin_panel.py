@@ -2,14 +2,41 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime
+import os
 
 # --- AYARLAR ---
 st.set_page_config(page_title="Fabrika Yönetim Paneli", layout="wide", page_icon="🏭")
 
 def get_db_connection():
-    # Streamlit'te thread çakışmalarını önlemek için check_same_thread=False eklendi
-    conn = sqlite3.connect("fabrika.db", check_same_thread=False)
+    # Dosya yolunu garantile
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(current_dir, "fabrika.db")
+    
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    
+    # HATA ÖNLEYİCİ: Pandas okumadan önce tabloların varlığını garantiye al
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS yemek_menusu (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT,
+            soup TEXT,
+            mainCourse TEXT,
+            sideDish TEXT,
+            dessert TEXT
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS duyurular (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            description TEXT,
+            timeAgo TEXT,
+            isUrgent INTEGER
+        )
+    """)
+    conn.commit()
     return conn
 
 # --- YARDIMCI FONKSİYONLAR ---
@@ -47,19 +74,16 @@ with tab1:
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 
-                # Önce bugünün tarihiyle kayıt var mı kontrol et
                 cursor.execute("SELECT id FROM yemek_menusu WHERE date = ?", (otomatik_tarih,))
                 kayit = cursor.fetchone()
                 
                 if kayit:
-                    # Varsa güncelle
                     cursor.execute("""
                         UPDATE yemek_menusu 
                         SET soup = ?, mainCourse = ?, sideDish = ?, dessert = ?
                         WHERE date = ?
                     """, (corba, ana_yemek, yan_lezzet, tatli, otomatik_tarih))
                 else:
-                    # Yoksa yeni ekle
                     cursor.execute("""
                         INSERT INTO yemek_menusu (date, soup, mainCourse, sideDish, dessert) 
                         VALUES (?, ?, ?, ?, ?)
@@ -71,6 +95,7 @@ with tab1:
                 st.error(f"Bir hata oluştu: {e}")
             finally:
                 conn.close()
+            st.rerun()
         else:
             st.warning("Lütfen en azından Çorba ve Ana Yemek alanlarını doldurun.")
 
@@ -84,9 +109,8 @@ with tab1:
             st.dataframe(df_menu, use_container_width=True, hide_index=True)
         else:
             st.info("Henüz kayıtlı bir menü bulunmuyor.")
-    except Exception:
-        st.error("Veritabanından menüler okunamadı. Tablo henüz oluşturulmamış olabilir.")
-
+    except Exception as e:
+        st.error(f"Kayıtlar okunamadı: {e}")
 
 # ==========================================
 # 2. SEKME: DUYURU YÖNETİMİ
@@ -112,6 +136,7 @@ with tab2:
                 st.error(f"Bir hata oluştu: {e}")
             finally:
                 conn.close()
+            st.rerun()
         else:
             st.warning("Lütfen başlık ve içerik alanlarını boş bırakmayın.")
 
@@ -123,10 +148,9 @@ with tab2:
         conn.close()
         
         if not df_duyuru.empty:
-            # 1 ve 0 değerlerini kullanıcı dostu metinlere çeviriyoruz
             df_duyuru['isUrgent'] = df_duyuru['isUrgent'].apply(lambda x: "Evet 🚨" if x == 1 else "Hayır")
             st.dataframe(df_duyuru, use_container_width=True, hide_index=True)
         else:
             st.info("Sistemde aktif duyuru bulunmuyor.")
-    except Exception:
-        st.error("Veritabanından duyurular okunamadı. Tablo henüz oluşturulmamış olabilir.")
+    except Exception as e:
+        st.error(f"Kayıtlar okunamadı: {e}")
