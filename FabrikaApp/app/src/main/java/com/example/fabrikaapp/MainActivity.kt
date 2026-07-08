@@ -1,6 +1,7 @@
 package com.example.fabrikaapp
 
 import android.os.Bundle
+import android.util.Log // Hata ayıklama için Log eklendi
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
@@ -23,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+// Font importunun hata vermemesi için proje yapına göre doğru konumda olduğuna emin ol
 import com.example.fabrikaapp.R
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -57,7 +59,8 @@ interface ApiService {
 }
 
 object RetrofitClient {
-    // BURAYA RENDER'IN SANA VERDİĞİ LİNKİ YAPIŞTIR (Sonunda / işareti olmasına dikkat et)
+    // DÜZELTME: Render API linkinin sonuna zorunlu olan "/" eklendi
+    // Eğer Render adresinde sayılar/harfler (örn: fabrika-api-abcd) varsa o kısmı kendine göre düzelt
     private const val BASE_URL = "https://fabrika-api.onrender.com/"
 
     val instance: ApiService by lazy {
@@ -198,8 +201,8 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 .height(50.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = textColor, // Buton arka planı (Karanlıkta beyaz, aydınlıkta siyah)
-                contentColor = bgColor      // Buton yazısı (Karanlıkta siyah, aydınlıkta beyaz)
+                containerColor = textColor,
+                contentColor = bgColor
             )
         ) {
             Text("Giriş Yap", fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -286,6 +289,8 @@ fun MenuScreen() {
         try {
             menuList = RetrofitClient.instance.getMenu()
         } catch (e: Exception) {
+            // DÜZELTME: Hataları konsola (Logcat) yazdırıyoruz ki sorunu görebilelim
+            Log.e("API_HATASI", "Menü çekilirken hata oluştu: ${e.localizedMessage}")
         } finally {
             isLoading = false
         }
@@ -343,6 +348,8 @@ fun AnnouncementScreen() {
         try {
             announcementList = RetrofitClient.instance.getAnnouncements()
         } catch (e: Exception) {
+            // DÜZELTME: Hataları konsola (Logcat) yazdırıyoruz
+            Log.e("API_HATASI", "Duyuru çekilirken hata oluştu: ${e.localizedMessage}")
         } finally {
             isLoading = false
         }
