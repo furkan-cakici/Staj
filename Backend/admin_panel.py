@@ -1,25 +1,27 @@
 import streamlit as st
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import pandas as pd
 from datetime import datetime
-import os
 
 # --- AYARLAR ---
 st.set_page_config(page_title="Fabrika Yönetim Paneli", layout="wide", page_icon="🏭")
 
+# Supabase Veritabanı Bağlantı Linkin
+DB_URL = "postgresql://postgres:12052014Kepen.@db.qpvovfxrzktgofdbazld.supabase.co:5432/postgres"
+
 def get_db_connection():
-    # Dosya yolunu garantile
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(current_dir, "fabrika.db")
-    
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    
-    # HATA ÖNLEYİCİ: Pandas okumadan önce tabloların varlığını garantiye al
+    # PostgreSQL bağlantısı
+    conn = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
+    return conn
+
+def init_db():
+    conn = get_db_connection()
     cursor = conn.cursor()
+    # SQLite'taki AUTOINCREMENT yerine PostgreSQL'de SERIAL kullanıyoruz
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS yemek_menusu (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             date TEXT,
             soup TEXT,
             mainCourse TEXT,
@@ -29,7 +31,7 @@ def get_db_connection():
     """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS duyurular (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title TEXT,
             description TEXT,
             timeAgo TEXT,
@@ -37,7 +39,13 @@ def get_db_connection():
         )
     """)
     conn.commit()
-    return conn
+    conn.close()
+
+# Tabloları garantile
+try:
+    init_db()
+except Exception as e:
+    st.error(f"Veritabanı bağlantı hatası: {e}")
 
 # --- YARDIMCI FONKSİYONLAR ---
 def bugunun_tarihini_al():
@@ -74,19 +82,20 @@ with tab1:
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 
-                cursor.execute("SELECT id FROM yemek_menusu WHERE date = ?", (otomatik_tarih,))
+                # PostgreSQL'de parametreler %s ile belirtilir
+                cursor.execute("SELECT id FROM yemek_menusu WHERE date = %s", (otomatik_tarih,))
                 kayit = cursor.fetchone()
                 
                 if kayit:
                     cursor.execute("""
                         UPDATE yemek_menusu 
-                        SET soup = ?, mainCourse = ?, sideDish = ?, dessert = ?
-                        WHERE date = ?
+                        SET soup = %s, mainCourse = %s, sideDish = %s, dessert = %s
+                        WHERE date = %s
                     """, (corba, ana_yemek, yan_lezzet, tatli, otomatik_tarih))
                 else:
                     cursor.execute("""
                         INSERT INTO yemek_menusu (date, soup, mainCourse, sideDish, dessert) 
-                        VALUES (?, ?, ?, ?, ?)
+                        VALUES (%s, %s, %s, %s, %s)
                     """, (otomatik_tarih, corba, ana_yemek, yan_lezzet, tatli))
                 
                 conn.commit()
@@ -103,15 +112,18 @@ with tab1:
     st.subheader("Sistemdeki Kayıtlı Menüler")
     try:
         conn = get_db_connection()
-        df_menu = pd.read_sql_query("SELECT * FROM yemek_menusu", conn)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM yemek_menusu")
+        rows = cursor.fetchall()
         conn.close()
-        if not df_menu.empty:
+        
+        if rows:
+            df_menu = pd.DataFrame(rows)
             st.dataframe(df_menu, use_container_width=True, hide_index=True)
         else:
             st.info("Henüz kayıtlı bir menü bulunmuyor.")
     except Exception as e:
         st.error(f"Kayıtlar okunamadı: {e}")
-
 
 # ==========================================
 # 2. SEKME: DUYURU YÖNETİMİ
@@ -129,7 +141,7 @@ with tab2:
                 saat = datetime.now().strftime("%H:%M")
                 conn.execute("""
                     INSERT INTO duyurular (title, description, timeAgo, isUrgent) 
-                    VALUES (?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s)
                 """, (d_baslik, d_icerik, saat, 1 if d_acil else 0))
                 conn.commit()
                 st.success("Duyuru başarıyla yayınlandı!")
@@ -143,7 +155,7 @@ with tab2:
 
     st.divider()
     
-    # --- YENİ EKLENEN: DUYURU SİLME BÖLÜMÜ ---
+    # --- DUYURU SİLME BÖLÜMÜ ---
     st.subheader("🗑️ İstediğin Duyuruyu Sil")
     try:
         conn = get_db_connection()
@@ -152,7 +164,6 @@ with tab2:
         mevcut_duyurular = cursor.fetchall()
         
         if mevcut_duyurular:
-            # Açılır menüde ID, Başlık ve Saat gösterecek şekilde sözlük oluşturuyoruz
             duyuru_secenekleri = {f"{d['id']} - {d['title']} ({d['timeAgo']})": d['id'] for d in mevcut_duyurular}
             
             col_secim, col_buton = st.columns([4, 1])
@@ -160,11 +171,11 @@ with tab2:
                 secilen_duyuru = st.selectbox("Silmek istediğiniz duyuruyu seçin:", list(duyuru_secenekleri.keys()))
             
             with col_buton:
-                st.write("") # Butonu selectbox ile aynı hizaya getirmek için boşluk
+                st.write("")
                 st.write("")
                 if st.button("Seçili Duyuruyu Sil"):
                     silinecek_id = duyuru_secenekleri[secilen_duyuru]
-                    cursor.execute("DELETE FROM duyurular WHERE id = ?", (silinecek_id,))
+                    cursor.execute("DELETE FROM duyurular WHERE id = %s", (silinecek_id,))
                     conn.commit()
                     st.success("Duyuru başarıyla silindi!")
                     st.rerun()
@@ -173,16 +184,20 @@ with tab2:
     except Exception as e:
         st.error(f"Duyurular yüklenirken hata oluştu: {e}")
     finally:
-        conn.close()
+        if 'conn' in locals():
+            conn.close()
 
     st.divider()
     st.subheader("Aktif Duyurular")
     try:
         conn = get_db_connection()
-        df_duyuru = pd.read_sql_query("SELECT id, title, description, timeAgo, isUrgent FROM duyurular", conn)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, title, description, timeAgo, isUrgent FROM duyurular")
+        rows = cursor.fetchall()
         conn.close()
         
-        if not df_duyuru.empty:
+        if rows:
+            df_duyuru = pd.DataFrame(rows)
             df_duyuru['isUrgent'] = df_duyuru['isUrgent'].apply(lambda x: "Evet 🚨" if x == 1 else "Hayır")
             st.dataframe(df_duyuru, use_container_width=True, hide_index=True)
         else:
