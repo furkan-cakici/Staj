@@ -102,8 +102,8 @@ with tab1:
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        # DÜZELTME UYGULANDI
-        cursor.execute('SELECT id, date, soup, maincourse AS "mainCourse", sidedish AS "sideDish", dessert FROM yemek_menusu')
+        # ID KALDIRILDI
+        cursor.execute('SELECT date, soup, maincourse AS "mainCourse", sidedish AS "sideDish", dessert FROM yemek_menusu')
         rows = cursor.fetchall()
         conn.close()
         
@@ -146,53 +146,71 @@ with tab2:
 
     st.divider()
     
-    st.subheader("🗑️ İstediğin Duyuruyu Sil")
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        # DÜZELTME UYGULANDI
-        cursor.execute('SELECT id, title, timeago AS "timeAgo" FROM duyurular')
-        mevcut_duyurular = cursor.fetchall()
-        
-        if mevcut_duyurular:
-            duyuru_secenekleri = {f"{d['id']} - {d['title']} ({d['timeAgo']})": d['id'] for d in mevcut_duyurular}
+    col_sil, col_sifirla = st.columns(2)
+    
+    with col_sil:
+        st.subheader("🗑️ İstediğin Duyuruyu Sil")
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT id, title, timeago AS "timeAgo" FROM duyurular')
+            mevcut_duyurular = cursor.fetchall()
             
-            col_secim, col_buton = st.columns([4, 1])
-            with col_secim:
+            if mevcut_duyurular:
+                duyuru_secenekleri = {f"{d['id']} - {d['title']} ({d['timeAgo']})": d['id'] for d in mevcut_duyurular}
                 secilen_duyuru = st.selectbox("Silmek istediğiniz duyuruyu seçin:", list(duyuru_secenekleri.keys()))
-            
-            with col_buton:
-                st.write("")
-                st.write("")
+                
                 if st.button("Seçili Duyuruyu Sil"):
                     silinecek_id = duyuru_secenekleri[secilen_duyuru]
                     cursor.execute("DELETE FROM duyurular WHERE id = %s", (silinecek_id,))
                     conn.commit()
                     st.success("Duyuru başarıyla silindi!")
                     st.rerun()
-        else:
-            st.info("Sistemde silinecek bir duyuru bulunmuyor.")
-    except Exception as e:
-        st.error(f"Duyurular yüklenirken hata oluştu: {e}")
-    finally:
-        if 'conn' in locals():
-            conn.close()
+            else:
+                st.info("Sistemde silinecek bir duyuru bulunmuyor.")
+        except Exception as e:
+            st.error(f"Duyurular yüklenirken hata oluştu: {e}")
+        finally:
+            if 'conn' in locals():
+                conn.close()
+
+    # --- SIFIRLAMA BÖLÜMÜ (YENİ) ---
+    with col_sifirla:
+        st.subheader("🧹 Gün Sonu: Tüm Duyuruları Sıfırla")
+        st.info("Bu buton dünün tüm duyurularını kalıcı olarak siler ve ID sayacını yeni gün için tekrar 1'e döndürür.")
+        if st.button("Sistemi Sıfırla (Tam Temizlik)", type="primary"):
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                # TRUNCATE komutu tabloyu komple siler, RESTART IDENTITY ise sayacı 1'e döndürür.
+                cursor.execute("TRUNCATE TABLE duyurular RESTART IDENTITY")
+                conn.commit()
+                st.success("Tüm duyurular temizlendi, ID sayacı 1'den başlatıldı!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Sıfırlama hatası: {e}")
+            finally:
+                conn.close()
 
     st.divider()
     st.subheader("Aktif Duyurular")
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        # DÜZELTME UYGULANDI
         cursor.execute('SELECT id, title, description, timeago AS "timeAgo", isurgent AS "isUrgent" FROM duyurular')
         rows = cursor.fetchall()
         conn.close()
         
         if rows:
             df_duyuru = pd.DataFrame(rows)
+            # Veritabanındaki ID'yi gizleyip, görsel olarak 1, 2, 3 diye satır numarası atıyoruz
+            df_duyuru = df_duyuru.drop(columns=['id']) 
+            df_duyuru.index = df_duyuru.index + 1
+            
             df_duyuru = df_duyuru.fillna("")
             df_duyuru['isUrgent'] = df_duyuru['isUrgent'].apply(lambda x: "Evet 🚨" if x == 1 else "Hayır")
-            st.dataframe(df_duyuru, use_container_width=True, hide_index=True)
+            # hide_index=False yaptık ki atadığımız 1, 2, 3 numaraları ekranda görünsün
+            st.dataframe(df_duyuru, use_container_width=True, hide_index=False)
         else:
             st.info("Sistemde aktif duyuru bulunmuyor.")
     except Exception as e:
