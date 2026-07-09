@@ -8,7 +8,7 @@ from datetime import datetime
 st.set_page_config(page_title="Fabrika Yönetim Paneli", layout="wide", page_icon="🏭")
 
 # Supabase Veritabanı Bağlantı Linkin
-DB_URL = "postgresql://postgres.qpvovfxrzktgofdbazld:12052014Kepen.@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
+DB_URL = "postgresql://postgres.qpvovfxrzktgofdbazld:12052014Kepen.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
 
 def get_db_connection():
     # PostgreSQL bağlantısı
