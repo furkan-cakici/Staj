@@ -26,7 +26,6 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS duyurular (
             id SERIAL PRIMARY KEY,
-            title SERIAL PRIMARY KEY,
             title TEXT,
             description TEXT,
             timeAgo TEXT,
@@ -42,17 +41,17 @@ init_db()
 def get_menu():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM yemek_menusu")
+    # DÜZELTME: PostgreSQL'in küçük harf yaptığı isimleri AS "" ile Android için eski haline getiriyoruz
+    cursor.execute('SELECT id, date, soup, maincourse AS "mainCourse", sidedish AS "sideDish", dessert FROM yemek_menusu')
     rows = cursor.fetchall()
     conn.close()
     
-    # --- NULL TEMİZLEME FİLTRESİ ---
     result = []
     for row in rows:
         d = dict(row)
         for key, value in d.items():
             if value is None:
-                d[key] = "" # Android ekranda null görmesin diye boş string yapıyoruz
+                d[key] = ""
         result.append(d)
     return result
 
@@ -60,11 +59,11 @@ def get_menu():
 def get_announcements():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM duyurular")
+    # DÜZELTME: timeAgo ve isUrgent için isimlendirme düzeltmesi
+    cursor.execute('SELECT id, title, description, timeago AS "timeAgo", isurgent AS "isUrgent" FROM duyurular')
     rows = cursor.fetchall()
     conn.close()
     
-    # --- NULL TEMİZLEME FİLTRESİ ---
     result = []
     for row in rows:
         d = dict(row)
