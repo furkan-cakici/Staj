@@ -1,12 +1,15 @@
 from fastapi import FastAPI
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = FastAPI()
 
+# Supabase Veritabanı Bağlantı Linkin
+DB_URL = "postgresql://postgres:12052014Kepen.@db.qpvovfxrzktgofdbazld.supabase.co:5432/postgres"
+
 def get_db_connection():
-    # check_same_thread=False ile aynı anda hem senin panelden hem telefondan istek gelirse kilitlenmeyi önlüyoruz
-    conn = sqlite3.connect("fabrika.db", check_same_thread=False)
-    conn.row_factory = sqlite3.Row
+    # PostgreSQL bağlantısını RealDictCursor ile açıyoruz ki veriler doğrudan JSON formatına uygun gelsin
+    conn = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
     return conn
 
 def init_db():
@@ -14,9 +17,10 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
+    # SQLite'taki AUTOINCREMENT yerine PostgreSQL'de SERIAL kullanılır
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS yemek_menusu (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             date TEXT,
             soup TEXT,
             mainCourse TEXT,
@@ -27,7 +31,7 @@ def init_db():
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS duyurular (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title TEXT,
             description TEXT,
             timeAgo TEXT,
@@ -47,7 +51,7 @@ def get_menu():
     cursor.execute("SELECT * FROM yemek_menusu")
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return rows # RealDictCursor otomatik olarak dict formatında döndürür
 
 @app.get("/api/announcements")
 def get_announcements():
@@ -57,7 +61,7 @@ def get_announcements():
     rows = cursor.fetchall()
     conn.close()
     
-    # SQLite'ta boolean olmadığı için 1/0 kontrolünü True/False yapıyoruz
+    # Veritabanındaki isUrgent (1/0) kontrolünü Android için True/False yapıyoruz
     result = []
     for row in rows:
         d = dict(row)
@@ -67,4 +71,4 @@ def get_announcements():
 
 @app.get("/")
 def read_root():
-    return {"message": "Fabrika API aktif ve sorunsuz çalışıyor!"}
+    return {"message": "Fabrika API Merkezi Bulut Veritabanı (PostgreSQL) ile aktif ve sorunsuz çalışıyor!"}

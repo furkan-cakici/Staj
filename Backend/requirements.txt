@@ -3,3 +3,4 @@ uvicorn
 pydantic
 streamlit
 pandas
+psycopg2-binary
