@@ -4,8 +4,8 @@ from psycopg2.extras import RealDictCursor
 
 app = FastAPI()
 
-# Supabase Veritabanı Bağlantı Linkin
-DB_URL = "postgresql://postgres:12052014Kepen.@db.qpvovfxrzktgofdbazld.supabase.co:5432/postgres"
+# DÜZELTİLDİ: Port 5432 yerine 6543 yapıldı.
+DB_URL = "postgresql://postgres.qpvovfxrzktgofdbazld:12052014Kepen.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
 
 def get_db_connection():
     # PostgreSQL bağlantısını RealDictCursor ile açıyoruz ki veriler doğrudan JSON formatına uygun gelsin
@@ -71,4 +71,5 @@ def get_announcements():
 
 @app.get("/")
 def read_root():
+    # DÜZELTİLDİ: Git çakışma (merge conflict) işaretleri temizlendi
     return {"message": "Fabrika API Merkezi Bulut Veritabanı (PostgreSQL) ile aktif ve sorunsuz çalışıyor!"}

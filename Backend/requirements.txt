@@ -3,4 +3,8 @@ uvicorn
 pydantic
 streamlit
 pandas
+<<<<<<< HEAD
 psycopg2-binary
+=======
+psycopg2-binary
+>>>>>>> e90bd2d6ee2ce876430c28d042f2fa4ed1603b2f
