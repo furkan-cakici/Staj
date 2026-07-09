@@ -119,6 +119,8 @@ with tab1:
         
         if rows:
             df_menu = pd.DataFrame(rows)
+            # YENİ EKLENEN KISIM: Tablodaki NULL verileri temiz bir boşluğa çevirir
+            df_menu = df_menu.fillna("") 
             st.dataframe(df_menu, use_container_width=True, hide_index=True)
         else:
             st.info("Henüz kayıtlı bir menü bulunmuyor.")
@@ -138,11 +140,14 @@ with tab2:
         if d_baslik and d_icerik:
             try:
                 conn = get_db_connection()
+                cursor = conn.cursor()
                 saat = datetime.now().strftime("%H:%M")
-                conn.execute("""
+                
+                cursor.execute("""
                     INSERT INTO duyurular (title, description, timeAgo, isUrgent) 
                     VALUES (%s, %s, %s, %s)
                 """, (d_baslik, d_icerik, saat, 1 if d_acil else 0))
+                
                 conn.commit()
                 st.success("Duyuru başarıyla yayınlandı!")
             except Exception as e:
@@ -198,6 +203,8 @@ with tab2:
         
         if rows:
             df_duyuru = pd.DataFrame(rows)
+            # YENİ EKLENEN KISIM: Tablodaki NULL verileri temiz bir boşluğa çevirir
+            df_duyuru = df_duyuru.fillna("")
             df_duyuru['isUrgent'] = df_duyuru['isUrgent'].apply(lambda x: "Evet 🚨" if x == 1 else "Hayır")
             st.dataframe(df_duyuru, use_container_width=True, hide_index=True)
         else:
