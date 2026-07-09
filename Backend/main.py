@@ -4,6 +4,7 @@ from psycopg2.extras import RealDictCursor
 
 app = FastAPI()
 
+# Bağlantı linkin (Port 6543 ile güvende)
 DB_URL = "postgresql://postgres.qpvovfxrzktgofdbazld:12052014Kepen.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
 
 def get_db_connection():
@@ -41,7 +42,8 @@ init_db()
 def get_menu():
     conn = get_db_connection()
     cursor = conn.cursor()
-    # DÜZELTME: PostgreSQL'in küçük harf yaptığı isimleri AS "" ile Android için eski haline getiriyoruz
+    
+    # İŞTE ANDROİD'İ KURTARAN SATIR: PostgreSQL'in küçük harf yaptığı isimleri AS "" ile eski haline getiriyoruz
     cursor.execute('SELECT id, date, soup, maincourse AS "mainCourse", sidedish AS "sideDish", dessert FROM yemek_menusu')
     rows = cursor.fetchall()
     conn.close()
@@ -59,7 +61,8 @@ def get_menu():
 def get_announcements():
     conn = get_db_connection()
     cursor = conn.cursor()
-    # DÜZELTME: timeAgo ve isUrgent için isimlendirme düzeltmesi
+    
+    # AYNI DÜZELTME DUYURULAR İÇİN DE GEÇERLİ:
     cursor.execute('SELECT id, title, description, timeago AS "timeAgo", isurgent AS "isUrgent" FROM duyurular')
     rows = cursor.fetchall()
     conn.close()
